@@ -1,0 +1,4 @@
+<launch>
+	<node name="writer" pkg="rosbag_logging" type="writer" output="screen" />
+
+</launch>

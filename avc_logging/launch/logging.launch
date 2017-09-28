@@ -1,0 +1,7 @@
+<launch>
+	<node name="rosbag_rec" pkg="rosbag" type="record" output="screen" 
+		args="-o $(find avc_logging)/bags/
+		-a
+		--split --duration 30s "/>
+
+</launch>

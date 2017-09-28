@@ -1,0 +1,13 @@
+<launch>
+  	<arg name="left_port" default="1" />
+  	<arg name="right_port" default="2" />
+
+   
+   	<!-- images will be published at /camera_name/image with the image transports plugins (e.g.: compressed) installed -->
+
+	    <node pkg="avc_vision" type="multi_viewer.py" name="ocam_stream" output="screen"> 
+	    	
+	        <param name="left_port" type="int" value="$(arg left_port)" />
+	        <param name="right_port" type="int" value="$(arg right_port)" />
+	    </node>
+</launch>
