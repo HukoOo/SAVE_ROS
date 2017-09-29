@@ -20,10 +20,7 @@ file(GLOB msgs_to_mat_SRC
     "src/msgs_to_mat/*.h"
     "src/msgs_to_mat/*.cpp"
 )
-file(GLOB ocam_SRC
-    "src/ocam/*.h"
-    "src/ocam/*.cpp"
-)
+
 file(GLOB obj_detection_SRC
     "src/object_detection/*.h"
     "src/object_detection/*.cpp"
@@ -39,7 +36,6 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 add_executable(msgs_to_mat ${msgs_to_mat_SRC})
-add_executable(ocam ${ocam_SRC})
 add_executable(object_detection ${obj_detection_SRC})
 
 include_directories(
@@ -49,15 +45,11 @@ include_directories(
 target_include_directories(msgs_to_mat PUBLIC
   src/msgs_to_mat
  )
-target_include_directories(ocam PUBLIC
-  src/ocam
- )
 
  target_link_libraries(msgs_to_mat
    ${catkin_LIBRARIES}
    ${OpenCV_LIBS}
 )
-target_link_libraries(ocam ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBS} -lv4l2 -ludev)
  target_link_libraries(object_detection
    ${catkin_LIBRARIES}
 )

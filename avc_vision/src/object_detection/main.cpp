@@ -40,6 +40,19 @@ struct Scalar
   int b;
 };
 
+double x_min=0.0;
+double x_max=30.0;
+double y_min=-10.0; 
+double y_max=10.0;
+double z_min=-3.0;
+double z_max=0.0;
+double val_vox= 0.05f;
+double DistanceThreshold= 0.2;
+double val_dist = 0.5;
+double val_radius = 0.3;
+int minNeighbor = 10;
+int val_minpt = 20;
+bool doFILTER = true;
 
 void addPointColoudToColouredPointCloud(pcl::PointCloud<PointT>::Ptr cloud_plane, pcl::PointCloud<pcl::PointXYZI> &coloured_point_cloud, int idx, bool tmp)
 { 
@@ -56,29 +69,17 @@ void addPointColoudToColouredPointCloud(pcl::PointCloud<PointT>::Ptr cloud_plane
 
 void cloud_cb (const sensor_msgs::PointCloud2 input)
 {
-  iter++;
-  std::string cloudname="";
-  std::stringstream ss;
-  ss << iter;
-  cloudname += "cloud_" + ss.str() + ".pcd";
-  ROS_INFO("%s", cloudname.c_str());
+	iter++;
+	std::string cloudname="";
+	std::stringstream ss;
+	ss << iter;
+	cloudname += "cloud_" + ss.str() + ".pcd";
+	ROS_INFO("%s", cloudname.c_str());
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>); // creates a shared pointer
-  pcl::fromROSMsg(input, *cloud);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>); // creates a shared pointer
+	pcl::fromROSMsg(input, *cloud);
 
-  double val_pass, val_vox;
-	double DistanceThreshold;
-	double val_dist = 0.5;
-	double val_radius = 0.3;
-	int minNeighbor = 10;
-	int val_minpt = 20;
-	bool doFILTER = true;
-
-	val_pass = -3.0;
-	val_vox = 0.05f;
-	DistanceThreshold = 0.2;
-
-  // All the objects needed
+	// All the objects needed
 	pcl::PCDReader reader;
 	pcl::PassThrough<PointT> pass;
 	pcl::NormalEstimation<PointT, pcl::Normal> ne;
@@ -95,25 +96,34 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	pcl::PointCloud<PointT>::Ptr cloud_filtered2(new pcl::PointCloud<PointT>);
 	pcl::PointCloud<PointT>::Ptr cloud_noise(new pcl::PointCloud<PointT>);
 	pcl::PointCloud<PointT>::Ptr cloud_xy(new pcl::PointCloud<PointT>);
-  
-  // -------------------------------------------------
-  // -----Create coloured point cloud for viewer -----
-  // -------------------------------------------------
+
+	// -------------------------------------------------
+	// -----Create coloured point cloud for viewer -----
+	// -------------------------------------------------
 	pcl::PointCloud<pcl::PointXYZI> coloured_point_cloud;  
 
 	// -------------------------------------------------
 	// Create the filtering object
 	// -------------------------------------------------
-  	pcl::VoxelGrid<pcl::PointXYZ> vox;	
+	pcl::VoxelGrid<pcl::PointXYZ> vox;	
 
 	if (doFILTER)
 	{
 
 		// passthrough filter to remove spurious NaNs
-
 		pass.setInputCloud(cloud);
+		pass.setFilterFieldName("x"); // z
+		pass.setFilterLimits(x_min, x_max);
+		pass.filter(*cloud_voxel);
+
+		pass.setInputCloud(cloud_voxel);
+		pass.setFilterFieldName("y"); // z
+		pass.setFilterLimits(y_min, y_max);
+		pass.filter(*cloud_voxel);
+
+		pass.setInputCloud(cloud_voxel);
 		pass.setFilterFieldName("z"); // z
-		pass.setFilterLimits(val_pass,3.0);
+		pass.setFilterLimits(z_min, z_max);
 		pass.filter(*cloud_voxel);
 
 		//voxel filtering
@@ -132,7 +142,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
 	pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
 
-// -------------------------------------------------
+	// -------------------------------------------------
 	// Extract plane points
 	// -------------------------------------------------
 
@@ -151,7 +161,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	if (inliers->indices.size() == 0)
 	{
 		PCL_ERROR("Could not estimate a planar model for the given dataset.");
-		return ;
+	return ;
 	}
 
 
@@ -206,15 +216,15 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	}
 
 
-    // Convert To ROS data type   
-  sensor_msgs::PointCloud2 output;  
-  pcl::PCLPointCloud2 cloud_p;
-  pcl::toPCLPointCloud2(coloured_point_cloud, cloud_p); 
-   
-  pcl_conversions::fromPCL(cloud_p, output);
-  output.header.frame_id = "Sensor";    
-  cluster_pub.publish(output);  
-    
+	// Convert To ROS data type   
+	sensor_msgs::PointCloud2 output;  
+	pcl::PCLPointCloud2 cloud_p;
+	pcl::toPCLPointCloud2(coloured_point_cloud, cloud_p); 
+
+	pcl_conversions::fromPCL(cloud_p, output);
+	output.header.frame_id = "Sensor";    
+	cluster_pub.publish(output);  
+
 }
 
 int
@@ -224,12 +234,25 @@ main (int argc, char** argv)
   ros::init (argc, argv, "clustering");
   ros::NodeHandle nh;
 
+  // Set param  
+  nh.getParam("/object_detection/x_min", x_min);
+  nh.getParam("/object_detection/x_max", x_max);
+  nh.getParam("/object_detection/y_min", y_min);
+  nh.getParam("/object_detection/y_max", y_max);
+  nh.getParam("/object_detection/z_min", z_min);
+  nh.getParam("/object_detection/z_max", z_max);
+  nh.getParam("/object_detection/val_vox", val_vox);
+  nh.getParam("/object_detection/DistanceThreshold", DistanceThreshold);
+  nh.getParam("/object_detection/val_dist", val_dist);
+  nh.getParam("/object_detection/val_radius", val_radius);
+  nh.getParam("/object_detection/minNeighbor", minNeighbor);
+  nh.getParam("/object_detection/val_minpt", val_minpt);
+  nh.getParam("/object_detection/doFILTER", doFILTER);
+
   // Create a ROS subscriber for the input point cloud
   ros::Subscriber sub = nh.subscribe ("Sensor/points", 1, cloud_cb);
 
-  // Create a ROS publisher for the output model coefficients
-  // pub = nh.advertise<pcl_msgs::ModelCoefficients> ("pclplaneoutput", 1);
-  cluster_pub = nh.advertise<sensor_msgs::PointCloud2> ("Sensor/clustered_points", 10);
+  cluster_pub = nh.advertise<sensor_msgs::PointCloud2> ("Sensor/clustered_points", 100);
   
   ROS_INFO("Clustering Start");  
   // Spin

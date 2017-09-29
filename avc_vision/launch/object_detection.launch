@@ -1,0 +1,22 @@
+<!-- ... -->
+<launch>
+  <node pkg="avc_vision" type="object_detection" name="object_detection" output="screen">
+    <param name="doFILTER"              value="true"/>  
+    <!-- pass filter-->
+    <param name="x_min"              value="-10.0"/>
+    <param name="x_max"              value="30.0"/>
+    <param name="y_min"              value="-10.0"/>
+    <param name="y_max"              value="10.0"/>
+    <param name="z_min"              value="-3.0"/>
+    <param name="z_max"              value="0.0"/>
+    <!-- voxel filter-->
+    <param name="val_vox"               value="0.05f"/>
+    <!-- plane extraction -->
+    <param name="DistanceThreshold"     value="0.2"/>
+    <param name="val_dist"              value="0.5"/>
+    <!-- radius filter -->
+    <param name="val_radius"            value="0.3"/>
+    <param name="minNeighbor"           value="10"/>
+    <param name="val_minpt"             value="20"/>
+  </node>
+</launch>
