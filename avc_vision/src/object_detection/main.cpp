@@ -1,34 +1,38 @@
 #include <ros/ros.h>
 // PCL specific includes
 #include <sensor_msgs/PointCloud2.h>
+#include <geometry_msgs/Point.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/ros/conversions.h>
-#include <pcl/point_cloud.h>
+// PCL specific includes
+#include <pcl/console/parse.h>
 #include <pcl/point_types.h>
-
-#include <pcl/filters/passthrough.h>
-#include <pcl/features/normal_3d.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/search/organized.h>
 #include <pcl/search/kdtree.h>
-#include <pcl/features/normal_3d_omp.h>
 #include <pcl/filters/conditional_removal.h>
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/ModelCoefficients.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/passthrough.h>
+#include <pcl/filters/radius_outlier_removal.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/ModelCoefficients.h>
 #include <pcl/features/normal_3d.h>
+#include <pcl/features/normal_3d_omp.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/console/parse.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/filters/radius_outlier_removal.h>
-
+#include <pcl/common/common.h>
+#include <pcl/common/centroid.h>
+#include <pcl/common/transforms.h>
 #include <iostream>
 #include <boost/thread/thread.hpp>
 
-ros::Publisher cluster_pub;
+ros::Publisher pub_pts,pub_obj;
 int iter=0;
 
 typedef pcl::PointXYZ PointT;
@@ -54,19 +58,54 @@ int minNeighbor = 10;
 int val_minpt = 20;
 bool doFILTER = true;
 
-void addPointColoudToColouredPointCloud(pcl::PointCloud<PointT>::Ptr cloud_plane, pcl::PointCloud<pcl::PointXYZI> &coloured_point_cloud, int idx, bool tmp)
+void publishCloudsData(pcl::PointCloud<PointT>::Ptr point_cloud_ptr, pcl::PointCloud<pcl::PointXYZI> &coloured_point_cloud, int idx, visualization_msgs::MarkerArray &markers)
 { 
-  for (int i=0;i<cloud_plane->size();i++)
+  //assign cloud idx
+  for (int i=0;i<point_cloud_ptr->size();i++)
   {
-    pcl::PointXYZ pt = cloud_plane->points[i];
+    pcl::PointXYZ pt = point_cloud_ptr->points[i];
     pcl::PointXYZI pt2;
     pt2.x = pt.x, pt2.y = pt.y, pt2.z = pt.z;
     pt2.intensity = float(idx);
 
     coloured_point_cloud.push_back(pt2);
   }
-}
 
+  // calculate min max pt
+  visualization_msgs::Marker marker;
+
+  pcl::PointXYZ min_pt, max_pt;
+  pcl::getMinMax3D(*point_cloud_ptr, min_pt, max_pt);
+  geometry_msgs::Point max_point,min_point;
+  max_point.x = max_pt.x; max_point.y = max_pt.y; max_point.z = max_pt.z;
+  min_point.x = min_pt.x; min_point.y = min_pt.y; min_point.z = min_pt.z;
+  marker.points.push_back(max_point);
+  marker.points.push_back(min_point);
+
+  marker.header.frame_id = "/Sensor";
+  marker.header.stamp = ros::Time::now();
+  marker.ns = "object";
+  marker.id = idx;
+  marker.type = visualization_msgs::Marker::CUBE_LIST;
+  marker.action = visualization_msgs::Marker::ADD;
+  marker.pose.position.x = 0;
+  marker.pose.position.y = 0;
+  marker.pose.position.z = 0;
+  marker.pose.orientation.x = 0.0;
+  marker.pose.orientation.y = 0.0;
+  marker.pose.orientation.z = 0.0;
+  marker.pose.orientation.w = 1.0;
+  marker.scale.x = 0.05;
+  marker.scale.y = 0.05;
+  marker.scale.z = 0.05;
+  marker.color.r = 1.0f;
+  marker.color.g = 1.0f;
+  marker.color.b = 0.0f;
+  marker.color.a = 1.0;
+  marker.lifetime = ros::Duration(0.5);
+
+  markers.markers.push_back(marker);
+}
 void cloud_cb (const sensor_msgs::PointCloud2 input)
 {
 	iter++;
@@ -74,7 +113,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	std::stringstream ss;
 	ss << iter;
 	cloudname += "cloud_" + ss.str() + ".pcd";
-	ROS_INFO("%s", cloudname.c_str());
+    //ROS_INFO("%s", cloudname.c_str());
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>); // creates a shared pointer
 	pcl::fromROSMsg(input, *cloud);
@@ -201,7 +240,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	ec.extract(cluster_indices);
 
 
-
+    visualization_msgs::MarkerArray markers;
 	int j = 0;
 	for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
 	{
@@ -212,7 +251,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 		cloud_cluster->height = 1;
 		cloud_cluster->is_dense = true;
 		j++;
-		addPointColoudToColouredPointCloud(cloud_cluster, coloured_point_cloud, j, false);	
+        publishCloudsData(cloud_cluster, coloured_point_cloud, j, markers);
 	}
 
 
@@ -223,8 +262,10 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 
 	pcl_conversions::fromPCL(cloud_p, output);
 	output.header.frame_id = "Sensor";    
-	cluster_pub.publish(output);  
+    pub_pts.publish(output);
 
+    // Publish markers
+    pub_obj.publish(markers);
 }
 
 int
@@ -252,7 +293,8 @@ main (int argc, char** argv)
   // Create a ROS subscriber for the input point cloud
   ros::Subscriber sub = nh.subscribe ("Sensor/points", 1, cloud_cb);
 
-  cluster_pub = nh.advertise<sensor_msgs::PointCloud2> ("Sensor/clustered_points", 100);
+  pub_pts = nh.advertise<sensor_msgs::PointCloud2> ("Sensor/clustered_points", 100);
+  pub_obj = nh.advertise<visualization_msgs::MarkerArray>("Sensor/visualization_objects", 100);
   
   ROS_INFO("Clustering Start");  
   // Spin
