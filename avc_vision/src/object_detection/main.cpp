@@ -82,28 +82,39 @@ void publishCloudsData(pcl::PointCloud<PointT>::Ptr point_cloud_ptr, pcl::PointC
   marker.points.push_back(max_point);
   marker.points.push_back(min_point);
 
+  double center_x=(min_pt.x+max_pt.x)/2.0;
+  double center_y=(min_pt.y+max_pt.y)/2.0;
+  double dist = sqrt(center_x*center_x+center_y*center_y);
+  
+  std::string obj_dist="";
+  std::stringstream ss;
+  ss << dist;
+  obj_dist=ss.str();
+  
+  
   marker.header.frame_id = "/Sensor";
   marker.header.stamp = ros::Time::now();
   marker.ns = "object";
   marker.id = idx;
-  marker.type = visualization_msgs::Marker::CUBE_LIST;
+  marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
   marker.action = visualization_msgs::Marker::ADD;
-  marker.pose.position.x = 0;
-  marker.pose.position.y = 0;
+  marker.pose.position.x = center_x;
+  marker.pose.position.y = center_y;
   marker.pose.position.z = 0;
   marker.pose.orientation.x = 0.0;
   marker.pose.orientation.y = 0.0;
   marker.pose.orientation.z = 0.0;
   marker.pose.orientation.w = 1.0;
-  marker.scale.x = 0.05;
-  marker.scale.y = 0.05;
-  marker.scale.z = 0.05;
+  marker.scale.x = 1.0f;
+  marker.scale.y = 1.0f;
+  marker.scale.z = 1.0f;
   marker.color.r = 1.0f;
   marker.color.g = 1.0f;
   marker.color.b = 0.0f;
   marker.color.a = 1.0;
   marker.lifetime = ros::Duration(0.5);
-
+  marker.text = obj_dist;
+  
   markers.markers.push_back(marker);
 }
 void cloud_cb (const sensor_msgs::PointCloud2 input)
