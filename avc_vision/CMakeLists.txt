@@ -24,10 +24,14 @@ generate_dynamic_reconfigure_options(
   cfg/cam.cfg
 )
 
+file(GLOB curve_center_SRC
+    "src/curve_center/*.h"
+    "src/curve_center/*.cpp"
+)
 
-file(GLOB msgs_to_mat_SRC
-    "src/msgs_to_mat/*.h"
-    "src/msgs_to_mat/*.cpp"
+file(GLOB side_obj_filter_SRC
+    "src/side_obj_filter/*.h"
+    "src/side_obj_filter/*.cpp"
 )
 
 file(GLOB obj_detection_SRC
@@ -38,16 +42,23 @@ file(GLOB ocam_SRC
   "src/ocam/*.h"  
   "src/ocam/*.cpp"
 )
+file(GLOB front_obj_SRC
+"src/front_obj_filter/*.h"  
+"src/front_obj_filter/*.cpp"
+)
+
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs 
-    camera_info_manager tf dynamic_reconfigure
+    camera_info_manager tf dynamic_reconfigure pcl_ros
   DEPENDS system_lib
 )
 
-add_executable(msgs_to_mat ${msgs_to_mat_SRC})
+add_executable(side_obj_filter ${side_obj_filter_SRC})
 add_executable(object_detection ${obj_detection_SRC})
 add_executable(ocam ${ocam_SRC})
+add_executable(front_obj_filter ${front_obj_SRC})
+add_executable(curve_center ${curve_center_SRC})
 
 target_link_libraries(ocam ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBS} -lv4l2 -ludev)
 
@@ -60,17 +71,22 @@ include_directories(
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-target_include_directories(msgs_to_mat PUBLIC
-  src/msgs_to_mat
- )
 
- target_link_libraries(msgs_to_mat
+ target_link_libraries(side_obj_filter
    ${catkin_LIBRARIES}
    ${Boost_LIBRARIES}
-   ${OpenCV_LIBS}
 )
  target_link_libraries(object_detection
    ${catkin_LIBRARIES}
+   ${Boost_LIBRARIES}
+)
+target_link_libraries(front_obj_filter
+	${catkin_LIBRARIES}
+	${Boost_LIBRARIES}
+)
+target_link_libraries(curve_center
+	${catkin_LIBRARIES}
+	${Boost_LIBRARIES}
 )
 add_dependencies(ocam ${PROJECT_NAME}_gencfg)
 #Add all files in subdirectories of the project in

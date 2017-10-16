@@ -19,4 +19,9 @@
     <param name="minNeighbor"           value="10"/>
     <param name="val_minpt"             value="20"/>
   </node>
+  <node pkg="avc_vision" type="side_obj_filter" name="side_obj_filter" output="screen"/>
+  <node pkg="avc_vision" type="front_obj_filter" name="front_obj_filter" output="screen"/>
+  <node pkg="avc_vision" type="curve_center" name="curve_center" output="screen"/>
+  
+
 </launch>

@@ -7,6 +7,7 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/ros/conversions.h>
+#include <pcl_ros/point_cloud.h>
 // PCL specific includes
 #include <pcl/console/parse.h>
 #include <pcl/point_types.h>
@@ -32,7 +33,7 @@
 #include <iostream>
 #include <boost/thread/thread.hpp>
 
-ros::Publisher pub_pts,pub_obj;
+ros::Publisher pub_pts,pub_obj,pub_road;
 int iter=0;
 
 typedef pcl::PointXYZ PointT;
@@ -71,9 +72,10 @@ void publishCloudsData(pcl::PointCloud<PointT>::Ptr point_cloud_ptr, pcl::PointC
     coloured_point_cloud.push_back(pt2);
   }
 
+  /*
   // calculate min max pt
-  visualization_msgs::Marker marker;
-
+  visualization_msgs::Marker marker; 
+  
   pcl::PointXYZ min_pt, max_pt;
   pcl::getMinMax3D(*point_cloud_ptr, min_pt, max_pt);
   geometry_msgs::Point max_point,min_point;
@@ -96,18 +98,18 @@ void publishCloudsData(pcl::PointCloud<PointT>::Ptr point_cloud_ptr, pcl::PointC
   marker.header.stamp = ros::Time::now();
   marker.ns = "object";
   marker.id = idx;
-  marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  marker.type = visualization_msgs::Marker::POINTS;
   marker.action = visualization_msgs::Marker::ADD;
-  marker.pose.position.x = center_x;
-  marker.pose.position.y = center_y;
+  marker.pose.position.x = 0;
+  marker.pose.position.y = 0;
   marker.pose.position.z = 0;
   marker.pose.orientation.x = 0.0;
   marker.pose.orientation.y = 0.0;
   marker.pose.orientation.z = 0.0;
   marker.pose.orientation.w = 1.0;
-  marker.scale.x = 1.0f;
-  marker.scale.y = 1.0f;
-  marker.scale.z = 1.0f;
+  marker.scale.x = 0.05f;
+  marker.scale.y = 0.05f;
+  marker.scale.z = 0.05f;
   marker.color.r = 1.0f;
   marker.color.g = 1.0f;
   marker.color.b = 0.0f;
@@ -116,7 +118,9 @@ void publishCloudsData(pcl::PointCloud<PointT>::Ptr point_cloud_ptr, pcl::PointC
   marker.text = obj_dist;
   
   markers.markers.push_back(marker);
+  */
 }
+
 void cloud_cb (const sensor_msgs::PointCloud2 input)
 {
 	iter++;
@@ -144,6 +148,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	pcl::PointCloud<PointT>::Ptr cloud_voxel(new pcl::PointCloud<PointT>);
 	pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
 	pcl::PointCloud<PointT>::Ptr cloud_filtered2(new pcl::PointCloud<PointT>);
+	pcl::PointCloud<PointT>::Ptr cloud_outliers(new pcl::PointCloud<PointT>);
 	pcl::PointCloud<PointT>::Ptr cloud_noise(new pcl::PointCloud<PointT>);
 	pcl::PointCloud<PointT>::Ptr cloud_xy(new pcl::PointCloud<PointT>);
 
@@ -219,7 +224,10 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	extract.setInputCloud(cloud_filtered);
 	extract.setIndices(inliers);
 	extract.setNegative(true);
-	extract.filter(*cloud_filtered2);
+	extract.filter(*cloud_filtered2);		//object points
+
+	extract.setNegative(false);
+	extract.filter(*cloud_outliers);
 
 	// remove noise points
 	pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
@@ -240,42 +248,47 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	}
 
 	// Creating the KdTree object for the search method of the extraction
-	tree->setInputCloud(cloud_xy);
-	std::vector<pcl::PointIndices> cluster_indices;
-	pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-	ec.setClusterTolerance(val_dist); // 2cm
-	ec.setMinClusterSize(val_minpt);
-	ec.setMaxClusterSize(25000);
-	ec.setSearchMethod(tree);
-	ec.setInputCloud(cloud_xy);
-	ec.extract(cluster_indices);
-
-
-    visualization_msgs::MarkerArray markers;
-	int j = 0;
-	for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
+	visualization_msgs::MarkerArray markers;
+	if(cloud_xy->points.size()>0)
 	{
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
-		for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
-			cloud_cluster->points.push_back(cloud_xy->points[*pit]);
-		cloud_cluster->width = cloud_cluster->points.size();
-		cloud_cluster->height = 1;
-		cloud_cluster->is_dense = true;
-		j++;
-        publishCloudsData(cloud_cluster, coloured_point_cloud, j, markers);
-	}
+		tree->setInputCloud(cloud_xy);
+		std::vector<pcl::PointIndices> cluster_indices;
+		pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+		ec.setClusterTolerance(val_dist); // 2cm
+		ec.setMinClusterSize(val_minpt);
+		ec.setMaxClusterSize(25000);
+		ec.setSearchMethod(tree);
+		ec.setInputCloud(cloud_xy);
+		ec.extract(cluster_indices);
 
+
+		int j = 0;
+		for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
+		{
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
+			for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
+				cloud_cluster->points.push_back(cloud_xy->points[*pit]);
+			cloud_cluster->width = cloud_cluster->points.size();
+			cloud_cluster->height = 1;
+			cloud_cluster->is_dense = true;
+			j++;
+			publishCloudsData(cloud_cluster, coloured_point_cloud, j, markers);
+		}
+	}
 
 	// Convert To ROS data type   
 	sensor_msgs::PointCloud2 output;  
 	pcl::PCLPointCloud2 cloud_p;
-	pcl::toPCLPointCloud2(coloured_point_cloud, cloud_p); 
 
+	pcl::toPCLPointCloud2(coloured_point_cloud, cloud_p); 
 	pcl_conversions::fromPCL(cloud_p, output);
 	output.header.frame_id = "Sensor";    
     pub_pts.publish(output);
 
-    // Publish markers
+	cloud_outliers->header.frame_id = "Sensor";
+    pub_road.publish(cloud_outliers);
+
+	// Publish markers
     pub_obj.publish(markers);
 }
 
@@ -305,7 +318,8 @@ main (int argc, char** argv)
   ros::Subscriber sub = nh.subscribe ("Sensor/points", 1, cloud_cb);
 
   pub_pts = nh.advertise<sensor_msgs::PointCloud2> ("Sensor/clustered_points", 100);
-  pub_obj = nh.advertise<visualization_msgs::MarkerArray>("Sensor/visualization_objects", 100);
+  pub_road = nh.advertise<pcl::PointCloud<pcl::PointXYZ>> ("Sensor/road_points", 100);
+  //pub_obj = nh.advertise<visualization_msgs::MarkerArray>("Sensor/visualization_objects", 100);
   
   ROS_INFO("Clustering Start");  
   // Spin

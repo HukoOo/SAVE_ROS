@@ -48,7 +48,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr pclCloud (new pcl::PointCloud<pcl::PointXYZ>); // creates a shared pointer
   pcl::fromROSMsg(input, *pclCloud);
-  pcl::io::savePCDFileBinaryCompressed(cloudname, *pclCloud);
+  //pcl::io::savePCDFileBinaryCompressed(cloudname, *pclCloud);
 }
 
 void image_left_cb (const sensor_msgs::ImageConstPtr& msg)
@@ -92,7 +92,7 @@ void image_right_cb (const sensor_msgs::ImageConstPtr& msg)
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    cv::imwrite(image_name, cv_ptr->image);
+    //cv::imwrite(image_name, cv_ptr->image);
 }
 
 int main (int argc, char** argv)
