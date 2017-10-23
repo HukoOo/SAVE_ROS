@@ -1,8 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 import socket
 import sys
+sys.path.append('/home/jjm/workspace/ROS/avc_ws/devel/lib/python2.7/dist-packages')
+
 import rospy, rospkg, math
 import time, copy
 import ctypes
@@ -17,7 +18,7 @@ from sensor_msgs.msg import PointCloud2
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
 
-host = '192.168.1.10'
+host = '127.0.0.1'
 #host = '192.168.1.1'
 # host = 'skku-Alienware-X51-R2'
 port = 21560
@@ -301,19 +302,19 @@ class TcpManager:
             self.right_building_incl = float(data.markers[1].text)
             self.right_building_dist = math.sqrt(data.markers[1].points[0].y*data.markers[1].points[0].y+data.markers[1].points[0].x*data.markers[1].points[0].x)
             
-        if len(data.markers)==1:
+        elif len(data.markers)==1:
             if data.markers[0].ns=='left_line':
                 self.left_building_incl = float(data.markers[0].text)
                 self.left_building_dist = math.sqrt(data.markers[0].points[0].y*data.markers[0].points[0].y+data.markers[0].points[0].x*data.markers[0].points[0].x)
                 self.right_building_dist = 0.0
                 self.right_building_incl = 0.0
 
-            if data.markers[0].ns=='right_line':
+            elif data.markers[0].ns=='right_line':
                 self.left_building_dist = 0.0
                 self.left_building_incl = 0.0
                 self.right_building_incl = float(data.markers[0].text)
                 self.right_building_dist = math.sqrt(data.markers[0].points[0].y*data.markers[0].points[0].y+data.markers[0].points[0].x*data.markers[0].points[0].x)
-        if len(data.markers)==0:
+        elif len(data.markers)==0:
                 self.left_building_dist = 0.0
                 self.left_building_incl = 0.0 
                 self.right_building_dist = 0.0

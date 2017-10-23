@@ -1,0 +1,9 @@
+<!-- ... -->
+<launch>
+  
+  <node pkg="avc_vision" type="tcp_receiver.py" name="tcp_receiver" output="screen"/>
+  <node pkg="avc_vision" type="tcp_sender.py" name="tcp_sender" output="screen"/>
+  <node pkg="avc_vision" type="obstacle_converter.py" name="obstacle_converter" output="screen"/>
+  
+
+</launch>

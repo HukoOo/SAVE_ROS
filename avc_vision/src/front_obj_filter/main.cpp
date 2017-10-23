@@ -176,7 +176,15 @@ void lane_cb(const teb_local_planner::SKKU_LaneArray lanes)
       lane_pts[0][i] = -lanes.lane[i].right;  
       lane_pts[1][i] = -lanes.lane[i].left;
     }
-
+	
+	// no detected lanes
+	if(lane_pts[0][0]==1000 || lane_pts[0][0]>999)
+		for(int i=0;i<3;i++)
+		{
+		  lane_pts[0][i] = 1;  
+		  lane_pts[1][i] = -1;
+		}
+	
     ///////////////// Detect front object distance /////////////////////////////////
     visualization_msgs::Marker marker_lane_left,marker_lane_right,marker_obj;
     

@@ -22,6 +22,7 @@
   <node pkg="avc_vision" type="side_obj_filter" name="side_obj_filter" output="screen"/>
   <node pkg="avc_vision" type="front_obj_filter" name="front_obj_filter" output="screen"/>
   <node pkg="avc_vision" type="curve_center" name="curve_center" output="screen"/>
+  <!--<node pkg="lane_detection" type="lane_detection" name="lane_detection" output="screen"/>-->
   
 
 </launch>

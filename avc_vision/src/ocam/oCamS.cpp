@@ -144,7 +144,7 @@ private:
     bool show_image_;
     bool config_changed_;
     ros::NodeHandle nh;
-    std::string frame_id_,image_topic_,port_,info_topic_,info_xml_, camera_name_,time_topic_;
+    std::string frame_id_,image_topic_,port_,info_topic_,info_xml_, camera_name_,time_topic_,port_left,port_right;
     Camera *cam_left,*cam_right;
     /**
      * @brief      { publish camera info }
@@ -305,9 +305,10 @@ public:
         info_xml_="package://ocams/config/left.yaml";
         camera_name_="ocam";
         show_image_ = false;
-        port_="/dev/video0";
+        port_left="/dev/video0";
+        port_right="/dev/video1";
 
-        /* get parameters 
+        // get parameters 
         priv_nh.getParam("resolution", resolution_);
         priv_nh.getParam("frame_rate", frame_rate_);
         priv_nh.getParam("exposure", exposure_);
@@ -317,16 +318,17 @@ public:
         priv_nh.getParam("frame_id", frame_id_);
         priv_nh.getParam("show_image", show_image_);
         priv_nh.getParam("auto_exposure", autoexposure_);
-        priv_nh.getParam("port", port_);
+        priv_nh.getParam("port_left", port_left);
+        priv_nh.getParam("port_right", port_right);
         priv_nh.getParam("image_topic", image_topic_);
         priv_nh.getParam("info_topic", info_topic_);
         priv_nh.getParam("info_xml", info_xml_);
         priv_nh.getParam("camera_name", camera_name_);
-        */
+        
 
         /* initialize the camera */
-        cam_left = new Camera(resolution_, frame_rate_, "/dev/video1");
-        cam_right = new Camera(resolution_, frame_rate_, "/dev/video2");
+        cam_left = new Camera(resolution_, frame_rate_, port_left);
+        cam_right = new Camera(resolution_, frame_rate_, port_right);
         cam_left->uvc_control(exposure_, gain_, wb_blue_, wb_red_, autoexposure_);
         cam_right->uvc_control(exposure_, gain_, wb_blue_, wb_red_, autoexposure_);
         ROS_INFO("Initialized the camera");

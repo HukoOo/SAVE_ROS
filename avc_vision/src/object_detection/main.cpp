@@ -227,7 +227,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	extract.filter(*cloud_filtered2);		//object points
 
 	extract.setNegative(false);
-	extract.filter(*cloud_outliers);
+	extract.filter(*cloud_outliers);		// road points
 
 	// remove noise points
 	pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
@@ -288,8 +288,6 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	cloud_outliers->header.frame_id = "Sensor";
     pub_road.publish(cloud_outliers);
 
-	// Publish markers
-    pub_obj.publish(markers);
 }
 
 int

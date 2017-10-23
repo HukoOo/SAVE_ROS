@@ -84,7 +84,6 @@ std::vector<double> lineFitting(pcl::PointCloud<pcl::PointXYZI>::Ptr _cloud)
         double roll, pitch, yaw;
         mat_.getRPY(roll, pitch, yaw);
         angle=yaw*180.0/PI;
-        ROS_INFO("angle=%f", angle);
 
         coeff.push_back(coefficients->values[0]);
         coeff.push_back(coefficients->values[1]);
@@ -103,13 +102,26 @@ std::vector<double> lineFitting(pcl::PointCloud<pcl::PointXYZI>::Ptr _cloud)
 }
 void cloud_cb (const sensor_msgs::PointCloud2 input)
 {
+    
     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZI>); // creates a shared pointer
     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_left (new pcl::PointCloud<pcl::PointXYZI>); // creates a shared pointer
     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_right (new pcl::PointCloud<pcl::PointXYZI>); // creates a shared pointer
     pcl::fromROSMsg(input, *cloud);
 
     visualization_msgs::MarkerArray markers_arrow;
-
+	// clear the arrow
+	
+	visualization_msgs::Marker delete_arrow;
+	delete_arrow.ns = "left_line";
+	delete_arrow.header.frame_id = "Sensor";
+	delete_arrow.header.stamp = ros::Time::now();
+	delete_arrow.type = visualization_msgs::Marker::ARROW;
+	delete_arrow.action = visualization_msgs::Marker::DELETE;
+    markers_arrow.markers.push_back(delete_arrow);
+	delete_arrow.ns = "right_line";
+    markers_arrow.markers.push_back(delete_arrow);
+    
+    
     pcl::PassThrough<pcl::PointXYZI> pass;
 
     // passthrough filter to remove spurious NaNs
@@ -168,7 +180,8 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
         obj_dist=ss.str();  
         marker_arrow.text = obj_dist;
         // Publish the marker
-        markers_arrow.markers.push_back(marker_arrow);
+        if(pt2.y>=0)
+                markers_arrow.markers.push_back(marker_arrow);
    }
    if(right_coeff.size()>0)
    {
@@ -210,7 +223,8 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
         obj_dist=ss.str();  
         marker_arrow.text = obj_dist;
         // Publish the marker
-        markers_arrow.markers.push_back(marker_arrow);
+        if(pt2.y<=0)
+                markers_arrow.markers.push_back(marker_arrow);
    }
 
   wall_pub.publish(markers_arrow);

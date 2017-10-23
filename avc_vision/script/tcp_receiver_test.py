@@ -6,8 +6,9 @@ import sys, copy
 import rospy
 from std_msgs.msg import Int8, Bool, Float64, Float32
 
-host = '192.168.1.1'
-port = 21570
+host = '127.0.0.1'
+port = 21560
+
 
 # 01234.678  x 6 + 5 = 54 + 5 = 59
 # 01234.678, 01234.678, 01234.678, 01234.678, 01234.678, 01234.678
@@ -23,7 +24,6 @@ def StringToFloat(str_data):
         return float(str_data)
 
 
-
 class TCP_Server:
     def __init__(self, host, port):
         # self.mission_size = 1
@@ -33,11 +33,10 @@ class TCP_Server:
         self.tcp_server.listen(1)
         print 'Server listening....'
         self.conn, addr = self.tcp_server.accept()
-        print self.conn, addr
-        
+        print 'Connected from...'
+        print( addr)
+
     def recv_data(self):
-        print "reciver: ", time.time()
-        
         length_raw = self.conn.recv(4).decode("ascii")
         try:
             length = int(length_raw)
@@ -46,50 +45,25 @@ class TCP_Server:
         # print length
         if length > 0:
             recv = self.conn.recv(length).decode("ascii")
-            # print recv+'__end__'
+            print recv
             recv_split = recv.split(",")
-            # mission, lat, lon, heading
-            mission = int(StringToFloat(recv_split[0]))
-            lat = StringToFloat(recv_split[1])
-            lon = StringToFloat(recv_split[2])
-            heading = StringToFloat(recv_split[3])
-            is_sim = bool(recv_split[3])
-            #conn.close()
-            #print " ----end if"
-            return mission, lat, lon, heading, is_sim
+            return True
         else:
-            #conn.close()
-            #print " ----end else"
-            return 0, 0.0, 0.0, 0.0, True
+            # conn.close()
+            # print " ----end else"
+            return False
 
 
 class TcpManager:
     def __init__(self):
         rospy.init_node("tcp_skku_reciver")
-        my_tcp = TCP_Server(host, port)
-
-        # ros publish
-        self.mission_pub = rospy.Publisher('/tcp_mission', Int8, queue_size=10)
-        self.mission = Int8()
-        self.lat_pub = rospy.Publisher('/tcp_lat', Float64, queue_size=10)
-        self.lat = Float64()
-        self.lon_pub = rospy.Publisher('/tcp_lon', Float64, queue_size=10)
-        self.lon = Float64()
-        self.heading_pub = rospy.Publisher('/tcp_heading', Float32, queue_size=10)
-        self.heading = Float32()
-        self.is_sim_pub = rospy.Publisher('/tcp_is_sim', Bool, queue_size=10)
-        self.is_sim = Bool()
+        self.my_tcp = TCP_Server(host, port)
 
         r = rospy.Rate(1000)
         while not rospy.is_shutdown():
             try:
                 # Subscribe
-                self.mission.data, self.lat.data, self.lon.data, self.heading.data, self.is_sim.data = my_tcp.recv_data()
-                self.mission_pub.publish(self.mission)
-                self.lat_pub.publish(self.lat)
-                self.lon_pub.publish(self.lon)
-                self.heading_pub.publish(self.heading)
-                self.is_sim_pub.publish(self.is_sim)
+                # self.my_tcp.recv_data()
                 r.sleep()
             except KeyboardInterrupt:
                 try:
@@ -100,7 +74,6 @@ class TcpManager:
                 break
         self.my_tcp.shutdown
         self.my_tcp.close()
-
 
 
 if __name__ == '__main__':

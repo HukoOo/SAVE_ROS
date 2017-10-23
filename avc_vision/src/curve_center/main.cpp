@@ -107,9 +107,9 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 		tree->setInputCloud(cloud);
 		std::vector<pcl::PointIndices> cluster_indices;
 		pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-		ec.setClusterTolerance(0.1); 
+		ec.setClusterTolerance(0.15); 
 		ec.setMinClusterSize(100);
-		ec.setMaxClusterSize(150);
+		ec.setMaxClusterSize(200);
 		ec.setSearchMethod(tree);
 		ec.setInputCloud(cloud);
 		ec.extract(cluster_indices);
@@ -129,7 +129,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
             pcl::PointXYZ max_point,min_point;
 			pcl::getMinMax3D(*cloud_cluster, min_point, max_point);
 			
-			double max_y=1.5, min_y=-1.5;
+			double max_y=3.5, min_y=-3.5;
 			geometry_msgs::Point min_pt, max_pt;
 			max_pt.x = max_point.x; max_pt.y = max_point.y;
 			min_pt.x = min_point.x; min_pt.y = min_point.y; 
@@ -142,8 +142,10 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 			double center_x=(min_pt.x+max_pt.x)/2.0;
 			double center_y=(min_pt.y+max_pt.y)/2.0;
 
-			if((center_y <= max_y && pt_l[0].y >= min_y &&
-				center_x <= 20 && center_x >0))
+			if((center_y <= max_y && center_y >= min_y &&
+				max_pt.x-min_pt.x <2.0 && max_pt.x-min_pt.x > 0.2 &&
+				max_pt.y-min_pt.y <3.8 && max_pt.y-min_pt.y > 2.5 && 
+				center_x > 1.0))
 			 {
 				 
 				j++;
