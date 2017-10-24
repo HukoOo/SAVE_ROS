@@ -180,12 +180,12 @@ class TcpManager:
                 
                 data_without_len += Float_to_TCP_String(2, self.s_start[0])+',' # left
                 data_without_len += Float_to_TCP_String(2, self.s_start[1])+',' # right
-                
+                '''
                 print self.left_building_incl
                 print self.left_building_dist
                 print self.right_building_incl
                 print self.right_building_dist
-
+                '''
                 data_without_len += Float_to_TCP_String(2, self.left_building_incl)+',' 
                 data_without_len += Float_to_TCP_String(2, self.right_building_incl)+',' 
                 data_without_len += Float_to_TCP_String(2, self.left_building_dist)+','                         
@@ -318,8 +318,13 @@ class TcpManager:
                 self.left_building_dist = 0.0
                 self.left_building_incl = 0.0 
                 self.right_building_dist = 0.0
-                self.right_building_incl = 0.0  
-    
+                self.right_building_incl = 0.0
+        print data
+        print len(data.markers)
+        print self.left_building_incl
+        print self.left_building_dist
+        print self.right_building_incl
+        print self.right_building_dist
             #dist = marker.text
             #MESSAGE = MESSAGE + ns
             #MESSAGE = MESSAGE + ","

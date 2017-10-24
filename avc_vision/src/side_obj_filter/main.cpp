@@ -110,7 +110,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 
     visualization_msgs::MarkerArray markers_arrow;
 	// clear the arrow
-	
+	/*
 	visualization_msgs::Marker delete_arrow;
 	delete_arrow.ns = "left_line";
 	delete_arrow.header.frame_id = "Sensor";
@@ -120,7 +120,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
     markers_arrow.markers.push_back(delete_arrow);
 	delete_arrow.ns = "right_line";
     markers_arrow.markers.push_back(delete_arrow);
-    
+    */
     
     pcl::PassThrough<pcl::PointXYZI> pass;
 
@@ -209,7 +209,6 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
                 pt1.x = x; pt1.y = y; pt1.z = 0.0;
                 pt2.x = pt1.x+norm_vec.x; pt2.y = pt1.y+norm_vec.y; pt2.z = 0.0;
 
-                marker_arrow.points.clear();
                 marker_arrow.points.push_back(pt1);
                 marker_arrow.points.push_back(pt2);
                 
@@ -228,7 +227,6 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 
             pt1.x = x; pt1.y = y; pt1.z = 0.0;
             pt2.x = pt1.x+left_coeff[3]; pt2.y = pt1.y+left_coeff[4]; pt2.z = pt1.z+left_coeff[5];
-            marker_arrow.points.clear();
             marker_arrow.points.push_back(pt1);
             marker_arrow.points.push_back(pt2);
 
@@ -313,7 +311,6 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
                 pt1.x = x; pt1.y = y; pt1.z = 0.0;
                 pt2.x = pt1.x+norm_vec.x; pt2.y = pt1.y+norm_vec.y; pt2.z = 0.0;
 
-                marker_arrow.points.clear();
                 marker_arrow.points.push_back(pt1);
                 marker_arrow.points.push_back(pt2);
                 
@@ -347,7 +344,7 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 
         
    }
-
+  ROS_INFO("%d", markers_arrow.markers.size());
   wall_pub.publish(markers_arrow);
 }
 int main(int argc, char** argv)

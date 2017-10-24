@@ -70,7 +70,7 @@ void image_left_cb (const sensor_msgs::ImageConstPtr& msg)
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    cv::imwrite(image_name, cv_ptr->image);
+    //cv::imwrite(image_name, cv_ptr->image);
 
 }
 void image_right_cb (const sensor_msgs::ImageConstPtr& msg)
@@ -92,7 +92,7 @@ void image_right_cb (const sensor_msgs::ImageConstPtr& msg)
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    //cv::imwrite(image_name, cv_ptr->image);
+    cv::imwrite(image_name, cv_ptr->image);
 }
 
 int main (int argc, char** argv)
