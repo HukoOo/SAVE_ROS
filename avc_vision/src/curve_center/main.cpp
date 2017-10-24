@@ -199,7 +199,7 @@ int
 main (int argc, char** argv)
 {
   // Initialize ROS
-  ros::init (argc, argv, "clustering");
+  ros::init (argc, argv, "curve_clustering");
   ros::NodeHandle nh;
 
   // Create a ROS subscriber for the input point cloud

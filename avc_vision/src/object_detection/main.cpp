@@ -133,168 +133,179 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>); // creates a shared pointer
 	pcl::fromROSMsg(input, *cloud);
 
-	// All the objects needed
-	pcl::PCDReader reader;
-	pcl::PassThrough<PointT> pass;
-	pcl::NormalEstimation<PointT, pcl::Normal> ne;
-
-	pcl::PCDWriter writer;
-	pcl::ExtractIndices<PointT> extract;
-	pcl::ExtractIndices<pcl::Normal> extract_normals;
-	pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>());
-
-	// Datasets
-	pcl::PointCloud<PointT>::Ptr cloud_filtered(new pcl::PointCloud<PointT>);
-	pcl::PointCloud<PointT>::Ptr cloud_voxel(new pcl::PointCloud<PointT>);
-	pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
-	pcl::PointCloud<PointT>::Ptr cloud_filtered2(new pcl::PointCloud<PointT>);
-	pcl::PointCloud<PointT>::Ptr cloud_outliers(new pcl::PointCloud<PointT>);
-	pcl::PointCloud<PointT>::Ptr cloud_noise(new pcl::PointCloud<PointT>);
-	pcl::PointCloud<PointT>::Ptr cloud_xy(new pcl::PointCloud<PointT>);
-
-	// -------------------------------------------------
-	// -----Create coloured point cloud for viewer -----
-	// -------------------------------------------------
-	pcl::PointCloud<pcl::PointXYZI> coloured_point_cloud;  
-
-	// -------------------------------------------------
-	// Create the filtering object
-	// -------------------------------------------------
-	pcl::VoxelGrid<pcl::PointXYZ> vox;	
-
-	if (doFILTER)
+	if(cloud->points.size()>0)
 	{
+		// All the objects needed
+		pcl::PassThrough<PointT> pass;
+		pcl::NormalEstimation<PointT, pcl::Normal> ne;
 
-		// passthrough filter to remove spurious NaNs
-		pass.setInputCloud(cloud);
-		pass.setFilterFieldName("x"); // z
-		pass.setFilterLimits(x_min, x_max);
-		pass.filter(*cloud_voxel);
+		pcl::PCDWriter writer;
+		pcl::ExtractIndices<PointT> extract;
+		pcl::ExtractIndices<pcl::Normal> extract_normals;
+		pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>());
 
-		pass.setInputCloud(cloud_voxel);
-		pass.setFilterFieldName("y"); // z
-		pass.setFilterLimits(y_min, y_max);
-		pass.filter(*cloud_voxel);
+		// Datasets
+		pcl::PointCloud<PointT>::Ptr cloud_filtered(new pcl::PointCloud<PointT>);
+		pcl::PointCloud<PointT>::Ptr cloud_voxel(new pcl::PointCloud<PointT>);
+		pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
+		pcl::PointCloud<PointT>::Ptr cloud_filtered2(new pcl::PointCloud<PointT>);
+		pcl::PointCloud<PointT>::Ptr cloud_outliers(new pcl::PointCloud<PointT>);
+		pcl::PointCloud<PointT>::Ptr cloud_noise(new pcl::PointCloud<PointT>);
+		pcl::PointCloud<PointT>::Ptr cloud_xy(new pcl::PointCloud<PointT>);
 
-		pass.setInputCloud(cloud_voxel);
-		pass.setFilterFieldName("z"); // z
-		pass.setFilterLimits(z_min, z_max);
-		pass.filter(*cloud_voxel);
+		// -------------------------------------------------
+		// -----Create coloured point cloud for viewer -----
+		// -------------------------------------------------
+		pcl::PointCloud<pcl::PointXYZI> coloured_point_cloud;  
 
-		//voxel filtering
-		vox.setInputCloud(cloud_voxel);
-		vox.setLeafSize(val_vox, val_vox, val_vox);
-		vox.filter(*cloud_filtered);
+		// -------------------------------------------------
+		// Create the filtering object
+		// -------------------------------------------------
+		pcl::VoxelGrid<pcl::PointXYZ> vox;	
+
+		if (doFILTER)
+		{
+
+			// passthrough filter to remove spurious NaNs
+			pass.setInputCloud(cloud);
+			pass.setFilterFieldName("x"); // z
+			pass.setFilterLimits(x_min, x_max);
+			pass.filter(*cloud_voxel);
+
+			pass.setInputCloud(cloud_voxel);
+			pass.setFilterFieldName("y"); // z
+			pass.setFilterLimits(y_min, y_max);
+			pass.filter(*cloud_voxel);
+
+			pass.setInputCloud(cloud_voxel);
+			pass.setFilterFieldName("z"); // z
+			pass.setFilterLimits(z_min, z_max);
+			pass.filter(*cloud_voxel);
+
+			//voxel filtering
+			vox.setInputCloud(cloud_voxel);
+			vox.setLeafSize(val_vox, val_vox, val_vox);
+			vox.filter(*cloud_filtered);
+			
+		}
+		else
+		{
+			pcl::copyPointCloud(*cloud, *cloud_filtered);
+			//cloud_filtered.swap(cloud_voxel);
+		}
+		pcl::copyPointCloud(*cloud_filtered, *cloud_voxel);
+
+		pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+		pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+
+		// -------------------------------------------------
+		// Extract plane points
+		// -------------------------------------------------
+
+		// Create the segmentation object
+		pcl::SACSegmentation<pcl::PointXYZ> seg;
+		// Optional
+		seg.setOptimizeCoefficients(true);
+		// Mandatory
+		seg.setModelType(pcl::SACMODEL_PERPENDICULAR_PLANE);
+		seg.setMethodType(pcl::SAC_RANSAC);
+		seg.setDistanceThreshold(DistanceThreshold);
+		seg.setMaxIterations(40); 
+		Eigen::Vector3f axis = Eigen::Vector3f(0.0,0.0,1.0);
+		seg.setAxis(axis);
+		seg.setEpsAngle(25.0f * (M_PI/180.0f));
+
+		seg.setInputCloud(cloud_filtered);
+		seg.segment(*inliers, *coefficients);
+
+		if (inliers->indices.size() == 0)
+		{
+			//PCL_ERROR("Could not estimate a planar model for the given dataset.");
+			return;
+		}
+
+
+		// Extract the plane points
+		extract.setInputCloud(cloud_filtered);
+		extract.setIndices(inliers);
+		extract.setNegative(true);
+		extract.filter(*cloud_filtered2);		//object points
+
+		extract.setNegative(false);
+		extract.filter(*cloud_outliers);		// road points
+
+		// remove noise points
+		if(!cloud_filtered2->points.empty())
+		{
+			pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
+			outrem.setInputCloud(cloud_filtered2);
+			outrem.setRadiusSearch(val_radius);
+			outrem.setMinNeighborsInRadius(minNeighbor);
+			outrem.filter(*cloud_noise);
 		
+
+			// -------------------------------------------------
+			// Calculate minimum bounding boxes
+			// -------------------------------------------------
+			cloud_xy->points.resize(cloud_noise->points.size());
+			for (size_t i = 0; i < cloud_noise->points.size(); i++)
+			{
+				cloud_xy->points[i].x = cloud_noise->points[i].x;
+				cloud_xy->points[i].y = cloud_noise->points[i].y;
+				cloud_xy->points[i].z = 0;
+			}
+
+			// Creating the KdTree object for the search method of the extraction
+			visualization_msgs::MarkerArray markers;
+			
+			if(!cloud_xy->points.empty())
+			{
+				tree->setInputCloud(cloud_xy);
+				std::vector<pcl::PointIndices> cluster_indices;
+				pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+				ec.setClusterTolerance(val_dist); // 2cm
+				ec.setMinClusterSize(val_minpt);
+				ec.setMaxClusterSize(25000);
+				ec.setSearchMethod(tree);
+				ec.setInputCloud(cloud_xy);
+				ec.extract(cluster_indices);
+
+				int j = 0;
+				for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
+				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
+					for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
+						cloud_cluster->points.push_back(cloud_xy->points[*pit]);
+					cloud_cluster->width = cloud_cluster->points.size();
+					cloud_cluster->height = 1;
+					cloud_cluster->is_dense = true;
+					j++;
+					publishCloudsData(cloud_cluster, coloured_point_cloud, j, markers);
+				}
+			}
+		}
+		// Convert To ROS data type   
+		sensor_msgs::PointCloud2 output;  
+		pcl::PCLPointCloud2 cloud_p;
+
+		pcl::toPCLPointCloud2(coloured_point_cloud, cloud_p); 
+		pcl_conversions::fromPCL(cloud_p, output);
+		output.header.frame_id = "Sensor";    
+		pub_pts.publish(output);
+
+		cloud_outliers->header.frame_id = "Sensor";
+		pub_road.publish(cloud_outliers);
 	}
 	else
-	{
-		pcl::copyPointCloud(*cloud, *cloud_filtered);
-		//cloud_filtered.swap(cloud_voxel);
-	}
-	pcl::copyPointCloud(*cloud_filtered, *cloud_voxel);
-
-	pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-	pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-
-	// -------------------------------------------------
-	// Extract plane points
-	// -------------------------------------------------
-
-	// Create the segmentation object
-	pcl::SACSegmentation<pcl::PointXYZ> seg;
-	// Optional
-	seg.setOptimizeCoefficients(true);
-	// Mandatory
-	seg.setModelType(pcl::SACMODEL_PLANE);
-	seg.setMethodType(pcl::SAC_RANSAC);
-	seg.setDistanceThreshold(DistanceThreshold);
-
-	seg.setInputCloud(cloud_filtered);
-	seg.segment(*inliers, *coefficients);
-
-	if (inliers->indices.size() == 0)
-	{
-		PCL_ERROR("Could not estimate a planar model for the given dataset.");
-	return ;
-	}
-
-
-	// Extract the plane points
-	extract.setInputCloud(cloud_filtered);
-	extract.setIndices(inliers);
-	extract.setNegative(true);
-	extract.filter(*cloud_filtered2);		//object points
-
-	extract.setNegative(false);
-	extract.filter(*cloud_outliers);		// road points
-
-	// remove noise points
-	pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
-	outrem.setInputCloud(cloud_filtered2);
-	outrem.setRadiusSearch(val_radius);
-	outrem.setMinNeighborsInRadius(minNeighbor);
-	outrem.filter(*cloud_noise);
-
-	// -------------------------------------------------
-	// Calculate minimum bounding boxes
-	// -------------------------------------------------
-	cloud_xy->points.resize(cloud_noise->points.size());
-	for (size_t i = 0; i < cloud_noise->points.size(); i++)
-	{
-		cloud_xy->points[i].x = cloud_noise->points[i].x;
-		cloud_xy->points[i].y = cloud_noise->points[i].y;
-		cloud_xy->points[i].z = 0;
-	}
-
-	// Creating the KdTree object for the search method of the extraction
-	visualization_msgs::MarkerArray markers;
-	if(cloud_xy->points.size()>0)
-	{
-		tree->setInputCloud(cloud_xy);
-		std::vector<pcl::PointIndices> cluster_indices;
-		pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-		ec.setClusterTolerance(val_dist); // 2cm
-		ec.setMinClusterSize(val_minpt);
-		ec.setMaxClusterSize(25000);
-		ec.setSearchMethod(tree);
-		ec.setInputCloud(cloud_xy);
-		ec.extract(cluster_indices);
-
-
-		int j = 0;
-		for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
-		{
-			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
-			for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
-				cloud_cluster->points.push_back(cloud_xy->points[*pit]);
-			cloud_cluster->width = cloud_cluster->points.size();
-			cloud_cluster->height = 1;
-			cloud_cluster->is_dense = true;
-			j++;
-			publishCloudsData(cloud_cluster, coloured_point_cloud, j, markers);
-		}
-	}
-
-	// Convert To ROS data type   
-	sensor_msgs::PointCloud2 output;  
-	pcl::PCLPointCloud2 cloud_p;
-
-	pcl::toPCLPointCloud2(coloured_point_cloud, cloud_p); 
-	pcl_conversions::fromPCL(cloud_p, output);
-	output.header.frame_id = "Sensor";    
-    pub_pts.publish(output);
-
-	cloud_outliers->header.frame_id = "Sensor";
-    pub_road.publish(cloud_outliers);
-
+		return;
+		
 }
 
 int
 main (int argc, char** argv)
 {
   // Initialize ROS
-  ros::init (argc, argv, "clustering");
+  ros::init (argc, argv, "object_clustering");
   ros::NodeHandle nh;
 
   // Set param  

@@ -50,7 +50,7 @@ std::vector<double> lineFitting(pcl::PointCloud<pcl::PointXYZI>::Ptr _cloud)
     std::vector<double> coeff;
     double angle=0;
 
-    if(_cloud->points.size()>0)
+    if(!_cloud->points.empty())
     {
         // RANSAC
         pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
@@ -109,242 +109,233 @@ void cloud_cb (const sensor_msgs::PointCloud2 input)
     pcl::fromROSMsg(input, *cloud);
 
     visualization_msgs::MarkerArray markers_arrow;
-	// clear the arrow
-	/*
-	visualization_msgs::Marker delete_arrow;
-	delete_arrow.ns = "left_line";
-	delete_arrow.header.frame_id = "Sensor";
-	delete_arrow.header.stamp = ros::Time::now();
-	delete_arrow.type = visualization_msgs::Marker::ARROW;
-	delete_arrow.action = visualization_msgs::Marker::DELETE;
-    markers_arrow.markers.push_back(delete_arrow);
-	delete_arrow.ns = "right_line";
-    markers_arrow.markers.push_back(delete_arrow);
-    */
-    
-    pcl::PassThrough<pcl::PointXYZI> pass;
+    if(!cloud->points.empty())
+    {
+        // clear the arrow
+        
+        pcl::PassThrough<pcl::PointXYZI> pass;
 
-    // passthrough filter to remove spurious NaNs
-    pass.setInputCloud(cloud);
-    pass.setFilterFieldName("y"); // z
-    pass.setFilterLimits(0, 10);
-    pass.filter(*cloud_left);
+        // passthrough filter to remove spurious NaNs
+        pass.setInputCloud(cloud);
+        pass.setFilterFieldName("y"); // z
+        pass.setFilterLimits(0, 10);
+        pass.filter(*cloud_left);
 
-    pass.setInputCloud(cloud);
-    pass.setFilterFieldName("y"); // z
-    pass.setFilterLimits(-10, 0);
-    pass.filter(*cloud_right);
+        pass.setInputCloud(cloud);
+        pass.setFilterFieldName("y"); // z
+        pass.setFilterLimits(-10, 0);
+        pass.filter(*cloud_right);
 
-    ///////////////// Detect line & Calculate gradient  /////////////////////////////////
-    std::vector<double> left_coeff,right_coeff;
-    left_coeff = lineFitting(cloud_left);
-    right_coeff = lineFitting(cloud_right);
+        ///////////////// Detect line & Calculate gradient  /////////////////////////////////
+        std::vector<double> left_coeff,right_coeff;
+        left_coeff = lineFitting(cloud_left);
+        right_coeff = lineFitting(cloud_right);
 
-   if(left_coeff.size()>0)
-   {
-       double dist=0.0, angle=0.0;
-       double a,b,c;
-       double x,y;
-       a = left_coeff[4]/left_coeff[3];
-       b = -1;
-       c = left_coeff[1]-left_coeff[0]*left_coeff[4]/left_coeff[3];
-       x = (b*(b*0-a*0)-a*c)/(a*a+b*b);
-       y = (a*(-b*0+a*0)-b*c)/(a*a+b*b);
-       dist = sqrt(x*x+y*y);
-       angle = left_coeff[6];
+    if(left_coeff.size()>0)
+    {
+        double dist=0.0, angle=0.0;
+        double a,b,c;
+        double x,y;
+        a = left_coeff[4]/left_coeff[3];
+        b = -1;
+        c = left_coeff[1]-left_coeff[0]*left_coeff[4]/left_coeff[3];
+        x = (b*(b*0-a*0)-a*c)/(a*a+b*b);
+        y = (a*(-b*0+a*0)-b*c)/(a*a+b*b);
+        dist = sqrt(x*x+y*y);
+        angle = left_coeff[6];
 
-       //
-        visualization_msgs::Marker marker_arrow;
-        marker_arrow.ns = "left_line";
-        marker_arrow.header.frame_id = "Sensor";
-        marker_arrow.header.stamp = ros::Time::now();
-        marker_arrow.type = visualization_msgs::Marker::ARROW;
-        marker_arrow.action = visualization_msgs::Marker::ADD;
-        marker_arrow.scale.x = 0.2;
-        marker_arrow.scale.y = 0.5;
-        marker_arrow.scale.z = 0.2;
-        // Set the color -- be sure to set alpha to something non-zero!
-        marker_arrow.color.r = 0.16f;
-        marker_arrow.color.g = 0.16f;
-        marker_arrow.color.b = 0.16f;
-        marker_arrow.color.a = 1.0f;
-        marker_arrow.lifetime = ros::Duration();
         //
+            visualization_msgs::Marker marker_arrow;
+            marker_arrow.ns = "left_line";
+            marker_arrow.header.frame_id = "Sensor";
+            marker_arrow.header.stamp = ros::Time::now();
+            marker_arrow.type = visualization_msgs::Marker::ARROW;
+            marker_arrow.action = visualization_msgs::Marker::ADD;
+            marker_arrow.scale.x = 0.2;
+            marker_arrow.scale.y = 0.5;
+            marker_arrow.scale.z = 0.2;
+            // Set the color -- be sure to set alpha to something non-zero!
+            marker_arrow.color.r = 0.16f;
+            marker_arrow.color.g = 0.16f;
+            marker_arrow.color.b = 0.16f;
+            marker_arrow.color.a = 1.0f;
+            marker_arrow.lifetime = ros::Duration();
+            //
 
-        //check horizon or vertical
-        pcl::PointCloud<pcl::PointXYZ>::Ptr tmp_cloud (new pcl::PointCloud<pcl::PointXYZ>);
-        geometry_msgs::Point pt1, pt2;
-        if(abs(angle)>90-10 && abs(angle)<90+10)  //horizon
-        {
-            if(angle>0)
-                angle=angle-90;
-            else
-                angle=angle+90;
-            pcl::PointXYZ norm_vec;
-            norm_vec.x=1.0*cos(angle*PI/180);
-            norm_vec.y=1.0*sin(angle*PI/180);
-
-            for(int i=0;i<cloud_left->points.size();i++)
+            //check horizon or vertical
+            pcl::PointCloud<pcl::PointXYZ>::Ptr tmp_cloud (new pcl::PointCloud<pcl::PointXYZ>);
+            geometry_msgs::Point pt1, pt2;
+            if(abs(angle)>90-10 && abs(angle)<90+10)  //horizon
             {
-                double interval=0.0;
-                interval = abs(a*cloud_left->points[i].x+b*cloud_left->points[i].y+c)/sqrt(a*a+b*b);
-                if(interval<0.05)
-                {
-                    tmp_cloud->points.push_back(pcl::PointXYZ(cloud_left->points[i].x,cloud_left->points[i].y,cloud_left->points[i].z));
-                    
-                }
-            }
-            pcl::PointXYZ min_pt,max_pt;
-            pcl::getMinMax3D(*tmp_cloud,min_pt,max_pt);
-            if(min_pt.x<15.0 && min_pt.y>1.0)
-            {                
-                marker_arrow.color.g = 1.0f;
-                // re-calculate 
-                a = -norm_vec.y/norm_vec.x;
-                b = 1;
-                c = a*min_pt.x+b*min_pt.y;
-                x = (b*(b*0-a*0)-a*c)/(a*a+b*b);
-                y = -(a*(-b*0+a*0)-b*c)/(a*a+b*b);
-                
-                pt1.x = x; pt1.y = y; pt1.z = 0.0;
-                pt2.x = pt1.x+norm_vec.x; pt2.y = pt1.y+norm_vec.y; pt2.z = 0.0;
+                if(angle>0)
+                    angle=angle-90;
+                else
+                    angle=angle+90;
+                pcl::PointXYZ norm_vec;
+                norm_vec.x=1.0*cos(angle*PI/180);
+                norm_vec.y=1.0*sin(angle*PI/180);
 
+                for(int i=0;i<cloud_left->points.size();i++)
+                {
+                    double interval=0.0;
+                    interval = abs(a*cloud_left->points[i].x+b*cloud_left->points[i].y+c)/sqrt(a*a+b*b);
+                    if(interval<0.05)
+                    {
+                        tmp_cloud->points.push_back(pcl::PointXYZ(cloud_left->points[i].x,cloud_left->points[i].y,cloud_left->points[i].z));
+                        
+                    }
+                }
+                pcl::PointXYZ min_pt,max_pt;
+                pcl::getMinMax3D(*tmp_cloud,min_pt,max_pt);
+                if(min_pt.x<15.0 && min_pt.y>1.0)
+                {                
+                    marker_arrow.color.g = 1.0f;
+                    // re-calculate 
+                    a = -norm_vec.y/norm_vec.x;
+                    b = 1;
+                    c = a*min_pt.x+b*min_pt.y;
+                    x = (b*(b*0-a*0)-a*c)/(a*a+b*b);
+                    y = -(a*(-b*0+a*0)-b*c)/(a*a+b*b);
+                    
+                    pt1.x = x; pt1.y = y; pt1.z = 0.0;
+                    pt2.x = pt1.x+norm_vec.x; pt2.y = pt1.y+norm_vec.y; pt2.z = 0.0;
+
+                    marker_arrow.points.push_back(pt1);
+                    marker_arrow.points.push_back(pt2);
+                    
+                    std::string obj_incl="";
+                    std::stringstream ss;
+                    ss << angle;
+                    obj_incl=ss.str();  
+                    marker_arrow.text = obj_incl;
+                    // Publish the marker
+                    if(pt1.y>=0)
+                        markers_arrow.markers.push_back(marker_arrow); 
+                }
+            }     
+            else
+            {        
+
+                pt1.x = x; pt1.y = y; pt1.z = 0.0;
+                pt2.x = pt1.x+left_coeff[3]; pt2.y = pt1.y+left_coeff[4]; pt2.z = pt1.z+left_coeff[5];
                 marker_arrow.points.push_back(pt1);
                 marker_arrow.points.push_back(pt2);
-                
+
                 std::string obj_incl="";
                 std::stringstream ss;
-                ss << angle;
+                ss << left_coeff[6];
                 obj_incl=ss.str();  
                 marker_arrow.text = obj_incl;
                 // Publish the marker
                 if(pt1.y>=0)
-                    markers_arrow.markers.push_back(marker_arrow); 
-            }
-        }     
-        else
-        {        
+                    markers_arrow.markers.push_back(marker_arrow);
+            } 
+    }
+    if(right_coeff.size()>0)
+    {
+            double dist=0.0,angle=0.0;
+            double a,b,c;
+            double x,y;
+            a = right_coeff[4]/right_coeff[3];
+            b = -1;
+            c = right_coeff[1]-right_coeff[0]*right_coeff[4]/right_coeff[3];
+            x = (b*(b*0-a*0)-a*c)/(a*a+b*b);
+            y = (a*(-b*0+a*0)-b*c)/(a*a+b*b);
+            dist = sqrt(x*x+y*y);
+            angle = right_coeff[6];
 
-            pt1.x = x; pt1.y = y; pt1.z = 0.0;
-            pt2.x = pt1.x+left_coeff[3]; pt2.y = pt1.y+left_coeff[4]; pt2.z = pt1.z+left_coeff[5];
-            marker_arrow.points.push_back(pt1);
-            marker_arrow.points.push_back(pt2);
+            //
 
-            std::string obj_incl="";
-            std::stringstream ss;
-            ss << left_coeff[6];
-            obj_incl=ss.str();  
-            marker_arrow.text = obj_incl;
-            // Publish the marker
-            if(pt1.y>=0)
-                markers_arrow.markers.push_back(marker_arrow);
-        } 
-   }
-   if(right_coeff.size()>0)
-   {
-        double dist=0.0,angle=0.0;
-        double a,b,c;
-        double x,y;
-        a = right_coeff[4]/right_coeff[3];
-        b = -1;
-        c = right_coeff[1]-right_coeff[0]*right_coeff[4]/right_coeff[3];
-        x = (b*(b*0-a*0)-a*c)/(a*a+b*b);
-        y = (a*(-b*0+a*0)-b*c)/(a*a+b*b);
-        dist = sqrt(x*x+y*y);
-        angle = right_coeff[6];
+            visualization_msgs::Marker marker_arrow;
+            marker_arrow.ns = "right_line";
+            marker_arrow.header.frame_id = "Sensor";
+            marker_arrow.header.stamp = ros::Time::now();
+            marker_arrow.type = visualization_msgs::Marker::ARROW;
+            marker_arrow.action = visualization_msgs::Marker::ADD;
+            marker_arrow.scale.x = 0.2;
+            marker_arrow.scale.y = 0.5;
+            marker_arrow.scale.z = 0.2;
+            // Set the color -- be sure to set alpha to something non-zero!
+            marker_arrow.color.r = 0.0f;
+            marker_arrow.color.g = 0.0f;
+            marker_arrow.color.b = 0.0f;
+            marker_arrow.color.a = 1.0f;
+            marker_arrow.lifetime = ros::Duration();
 
-        //
-
-        visualization_msgs::Marker marker_arrow;
-        marker_arrow.ns = "right_line";
-        marker_arrow.header.frame_id = "Sensor";
-        marker_arrow.header.stamp = ros::Time::now();
-        marker_arrow.type = visualization_msgs::Marker::ARROW;
-        marker_arrow.action = visualization_msgs::Marker::ADD;
-        marker_arrow.scale.x = 0.2;
-        marker_arrow.scale.y = 0.5;
-        marker_arrow.scale.z = 0.2;
-        // Set the color -- be sure to set alpha to something non-zero!
-        marker_arrow.color.r = 0.0f;
-        marker_arrow.color.g = 0.0f;
-        marker_arrow.color.b = 0.0f;
-        marker_arrow.color.a = 1.0f;
-        marker_arrow.lifetime = ros::Duration();
-
-        //check horizon or vertical
-        pcl::PointCloud<pcl::PointXYZ>::Ptr tmp_cloud (new pcl::PointCloud<pcl::PointXYZ>);
-        geometry_msgs::Point pt1, pt2;
-        
-        if(abs(angle)>90-10 && abs(angle)<90+10)  //horizon
-        {
-            if(angle>0)
-                angle=angle-90;
-            else
-                angle=angle+90;
-            pcl::PointXYZ norm_vec;
-            norm_vec.x=1.0*cos(angle*PI/180);
-            norm_vec.y=1.0*sin(angle*PI/180);
-
-            for(int i=0;i<cloud_right->points.size();i++)
-            {
-                double interval=0.0;
-                interval = abs(a*cloud_right->points[i].x+b*cloud_right->points[i].y+c)/sqrt(a*a+b*b);
-                if(interval<0.05)
-                {
-                    tmp_cloud->points.push_back(pcl::PointXYZ(cloud_right->points[i].x,cloud_right->points[i].y,cloud_right->points[i].z));
-                    
-                }
-            }
-            pcl::PointXYZ min_pt,max_pt;
-            pcl::getMinMax3D(*tmp_cloud,min_pt,max_pt);
+            //check horizon or vertical
+            pcl::PointCloud<pcl::PointXYZ>::Ptr tmp_cloud (new pcl::PointCloud<pcl::PointXYZ>);
+            geometry_msgs::Point pt1, pt2;
             
-            if(max_pt.x<15.0 && max_pt.y<-1.0)
-            {  
-                marker_arrow.color.r = 1.0f;
-                // re-calculate 
-                a = -norm_vec.y/norm_vec.x;
-                b = 1;
-                c = a*max_pt.x+b*max_pt.y;
-                x = (b*(b*0-a*0)-a*c)/(a*a+b*b);
-                y = -(a*(-b*0+a*0)-b*c)/(a*a+b*b);
+            if(abs(angle)>90-10 && abs(angle)<90+10)  //horizon
+            {
+                if(angle>0)
+                    angle=angle-90;
+                else
+                    angle=angle+90;
+                pcl::PointXYZ norm_vec;
+                norm_vec.x=1.0*cos(angle*PI/180);
+                norm_vec.y=1.0*sin(angle*PI/180);
+
+                for(int i=0;i<cloud_right->points.size();i++)
+                {
+                    double interval=0.0;
+                    interval = abs(a*cloud_right->points[i].x+b*cloud_right->points[i].y+c)/sqrt(a*a+b*b);
+                    if(interval<0.05)
+                    {
+                        tmp_cloud->points.push_back(pcl::PointXYZ(cloud_right->points[i].x,cloud_right->points[i].y,cloud_right->points[i].z));
+                        
+                    }
+                }
+                pcl::PointXYZ min_pt,max_pt;
+                pcl::getMinMax3D(*tmp_cloud,min_pt,max_pt);
+                
+                if(max_pt.x<15.0 && max_pt.y<-1.0)
+                {  
+                    marker_arrow.color.r = 1.0f;
+                    // re-calculate 
+                    a = -norm_vec.y/norm_vec.x;
+                    b = 1;
+                    c = a*max_pt.x+b*max_pt.y;
+                    x = (b*(b*0-a*0)-a*c)/(a*a+b*b);
+                    y = -(a*(-b*0+a*0)-b*c)/(a*a+b*b);
+                    
+                    pt1.x = x; pt1.y = y; pt1.z = 0.0;
+                    pt2.x = pt1.x+norm_vec.x; pt2.y = pt1.y+norm_vec.y; pt2.z = 0.0;
+
+                    marker_arrow.points.push_back(pt1);
+                    marker_arrow.points.push_back(pt2);
+                    
+                    std::string obj_incl="";
+                    std::stringstream ss;
+                    ss << angle;
+                    obj_incl=ss.str();  
+                    marker_arrow.text = obj_incl;
+                    // Publish the marker
+                    if(pt1.y<=0)
+                        markers_arrow.markers.push_back(marker_arrow);
+                }
+            }     
+            else
+            {
                 
                 pt1.x = x; pt1.y = y; pt1.z = 0.0;
-                pt2.x = pt1.x+norm_vec.x; pt2.y = pt1.y+norm_vec.y; pt2.z = 0.0;
-
+                pt2.x = pt1.x+right_coeff[3]; pt2.y = pt1.y+right_coeff[4]; pt2.z = pt1.z+right_coeff[5];
                 marker_arrow.points.push_back(pt1);
                 marker_arrow.points.push_back(pt2);
-                
+        
                 std::string obj_incl="";
                 std::stringstream ss;
-                ss << angle;
+                ss << right_coeff[6];
                 obj_incl=ss.str();  
                 marker_arrow.text = obj_incl;
                 // Publish the marker
                 if(pt1.y<=0)
-                    markers_arrow.markers.push_back(marker_arrow);
+                        markers_arrow.markers.push_back(marker_arrow);
             }
-        }     
-        else
-        {
-            
-            pt1.x = x; pt1.y = y; pt1.z = 0.0;
-            pt2.x = pt1.x+right_coeff[3]; pt2.y = pt1.y+right_coeff[4]; pt2.z = pt1.z+right_coeff[5];
-            marker_arrow.points.push_back(pt1);
-            marker_arrow.points.push_back(pt2);
-    
-            std::string obj_incl="";
-            std::stringstream ss;
-            ss << right_coeff[6];
-            obj_incl=ss.str();  
-            marker_arrow.text = obj_incl;
-            // Publish the marker
-            if(pt1.y<=0)
-                    markers_arrow.markers.push_back(marker_arrow);
-        }
 
-        
-   }
-  ROS_INFO("%d", markers_arrow.markers.size());
+            
+    }
+    }
   wall_pub.publish(markers_arrow);
 }
 int main(int argc, char** argv)
