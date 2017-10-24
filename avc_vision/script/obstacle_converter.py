@@ -91,7 +91,10 @@ class Obstacles:
                 min_x = roi_marker_array.markers[i].points[1].x
                 center_y = (roi_marker_array.markers[i].points[0].y + roi_marker_array.markers[i].points[1].y)/2.0
                 at_least = True
-
+        if len(roi_marker_array.markers)==0:    #if no obstacle detected
+            self.tracking_target_info.x = 0.0
+            self.tracking_target_info.y = 0.0
+            at_least = True
         if at_least:
 
             #rospy.loginfo(len(roi_marker_array.markers))
